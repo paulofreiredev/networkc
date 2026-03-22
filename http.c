@@ -7,10 +7,10 @@
 #include <unistd.h>
 
 #define PORT "8282"
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 1024
 #define BACKLOG 5
 /**
- Servidor TCP que recebe uma conexão, serve html e depois encerra
+ Servidor HTTP que serve HTML hardcoded
 */
 
 void server(){
@@ -21,6 +21,11 @@ void server(){
     int server_fd, client_fd, status; // file descriptos e status.
     int yes = 1; // isso aqui é uma gambiarra que precisa ser passado pra setsockopt
     struct addrinfo hints, *res; // struct filtro IP + porta e linked list pra resposta
+    char buffer[BUFFER_SIZE];
+    char *message = "<html><head><title>Hello C</title></head><body><h1>[TCP SOCKET (C)] Hello, world!</h1></body></html>";
+    char response[BUFFER_SIZE];
+    snprintf(response, sizeof response, "HTTP/1.1 200 OK\r\n" "Content-Type: text/html\r\n" "Content-Length: %zu\r\n" "\r\n" "%s", strlen(message), message);
+
     memset(&hints, 0, sizeof hints); // limpa a memoria da struct pra não conter lixo
     hints.ai_family = AF_INET; // IPV4
     hints.ai_socktype = SOCK_STREAM; // TCP
@@ -45,26 +50,30 @@ void server(){
         perror("[ERROR] CANNOT LISTEN");
         exit(1);
     }
-    if((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size)) ==  -1){ //aceita uma conexão
-        perror("[ERROR] CANNOT ACCEPT CLIENT CONNECTION");
-        exit(1);
+
+    while(1){
+        if((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size)) ==  -1){ //aceita uma conexão
+            perror("[ERROR] CANNOT ACCEPT CLIENT CONNECTION");
+            exit(1);
+        }
+        if(client_addr.ss_family == AF_INET){ // se for ipv4 atribui a variavel addr
+            struct sockaddr_in *s = (struct sockaddr_in *)&client_addr;
+            addr = &(s->sin_addr);
+        } else { // se for ipv6 atribui a variável addr
+            struct sockaddr_in6 *s = (struct sockaddr_in6 *)&client_addr;
+            addr = &(s->sin6_addr);
+        }
+
+        inet_ntop(client_addr.ss_family, addr, client_ip, sizeof client_ip);// ntop (network to printable) traduz um endereço de 32 ou 128 para string
+        printf("CLIENT CONNECTED WITH IP %s\n", client_ip);
+        recv(client_fd, buffer, sizeof buffer, 0);
+        printf("%s\n", buffer);
+        //formata a string fazendo concateção e colocando na string response
+        //envia o html para o cliente
+        send(client_fd, response, strlen(response), 0);
+        close(client_fd); //fecha o filedescriptor do socket do cliente
     }
-    if(client_addr.ss_family == AF_INET){ // se for ipv4 atribui a variavel addr
-        struct sockaddr_in *s = (struct sockaddr_in *)&client_addr;
-        addr = &(s->sin_addr);
-    } else { // se for ipv6 atribui a variável addr
-        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&client_addr;
-        addr = &(s->sin6_addr);
-    }
-    inet_ntop(client_addr.ss_family, addr, client_ip, sizeof client_ip);// ntop (network to printable) traduz um endereço de 32 ou 128 para string
-    printf("CLIENT CONNECTED WITH IP %s\n", client_ip);
-    char *message = "<html><head><title>Hello C</title></head><body><h1>[TCP SOCKET (C)] Hello, world!</h1></body></html>";
-    char response[BUFFER_SIZE];
-    //formata a string fazendo concateção e colocando na string response
-    snprintf(response, sizeof response, "HTTP/1.1 200 OK\r\n" "Content-Type: text/html\r\n" "Content-Length:%zu\r\n" "\r\n" "%s", strlen(message), message);
-    //envia o html para o cliente
-    send(client_fd, response, strlen(response), 0);
-    close(client_fd); //fecha o filedescriptor do socket do cliente
+
     close(server_fd); //fecha o filedescriptor do socket do servidor
     freeaddrinfo(res); //da um free na estrutura que foi alocada pelo getaddrinfo internamente
 }
