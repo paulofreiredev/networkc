@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <netdb.h>
+#include <arpa/inet.h>
+
 /*
     Usa a função getaddrinfo para fazer a tradução de um dominio válido como google.com em endereços IPv4 e IPv6
     Uso: ./bin/dns google.com (pode substituir por qualquer site válido)
@@ -20,7 +22,7 @@ int main(int argc, char *argv[]){
     hints.ai_flags = AI_PASSIVE; // Flag que indica que não vou passar um endereço IP
 
     if((status = getaddrinfo(argv[1], NULL, &hints, &res) != 0)){
-        fprintf("Error: %s\n", gai_strerror(status)); // gai strerror significa get address info string error | faz a tradução
+        fprintf(stderr, "Error: %s\n", gai_strerror(status)); // gai strerror significa get address info string error | faz a tradução
         exit(1);
     }
     // aqui interamos sobre a lista linkada para exibir os endereços IP
