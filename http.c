@@ -17,7 +17,7 @@ void server(){
     char client_ip[INET6_ADDRSTRLEN]; // IP do cliente somente pra log
     void *addr; // ponteiro generico pra servir tanto como ipv4 como ipv6
     struct sockaddr_storage client_addr; // struct que serve pra ipv4 e ipv6
-    socklen_t client_addr_size = sizeof client_addr; //inicializa com tamano do endereço do cliente
+    socklen_t client_addr_size; //inicializa com tamano do endereço do cliente
     int server_fd, client_fd, status; // file descriptos e status.
     int yes = 1; // isso aqui é uma gambiarra que precisa ser passado pra setsockopt
     struct addrinfo hints, *res; // struct filtro IP + porta e linked list pra resposta
@@ -52,6 +52,7 @@ void server(){
     }
 
     while(1){
+        client_addr_size = sizeof client_addr;
         if((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size)) ==  -1){ //aceita uma conexão
             perror("[ERROR] CANNOT ACCEPT CLIENT CONNECTION");
             exit(1);
@@ -66,7 +67,11 @@ void server(){
 
         inet_ntop(client_addr.ss_family, addr, client_ip, sizeof client_ip);// ntop (network to printable) traduz um endereço de 32 ou 128 para string
         printf("CLIENT CONNECTED WITH IP %s\n", client_ip);
-        recv(client_fd, buffer, sizeof buffer, 0);
+        int bytes_readed = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+        //remove garbage from memory
+        if(bytes_readed > 0){
+            buffer[bytes_readed] = '\0';
+        }
         printf("%s\n", buffer);
         //formata a string fazendo concateção e colocando na string response
         //envia o html para o cliente
